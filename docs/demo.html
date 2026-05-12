@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kiro Mobile Bridge — Demo</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --panel: #1a1d24;
+      --border: #2a2e38;
+      --text: #e6e8ec;
+      --muted: #9aa0aa;
+      --accent: #58a6ff;
+      --green: #4caf50;
+      --amber: #e3b341;
+      --phone: #111;
+      --phone-bezel: #1a1a1a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--accent); }
+    code, pre {
+      font-family: "SFMono-Regular", "Menlo", "Monaco", "Consolas", monospace;
+      font-size: 13px;
+    }
+    pre {
+      background: #06080c;
+      border: 1px solid var(--border);
+      padding: 14px 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+    header { max-width: 1100px; margin: 0 auto; padding: 56px 24px 24px; text-align: center; }
+    header h1 { font-size: 40px; font-weight: 700; letter-spacing: -0.02em; }
+    header p.tagline { margin-top: 10px; color: var(--muted); font-size: 17px; }
+    header .badges { margin-top: 18px; display: inline-flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+    header .badge {
+      background: var(--panel); border: 1px solid var(--border); color: var(--muted);
+      padding: 4px 10px; border-radius: 999px; font-size: 12px;
+    }
+    section { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+    section h2 { font-size: 22px; margin-bottom: 14px; letter-spacing: -0.01em; }
+    section p { color: var(--muted); max-width: 70ch; }
+    section .lead { color: var(--text); }
+
+    .stage {
+      display: grid; grid-template-columns: 1.6fr 1fr; gap: 28px; align-items: stretch;
+    }
+    @media (max-width: 820px) { .stage { grid-template-columns: 1fr; } }
+
+    .laptop {
+      background: #0b0d11; border: 1px solid var(--border);
+      border-radius: 14px 14px 6px 6px; padding: 12px 14px 14px;
+      box-shadow: 0 30px 80px -20px rgba(0,0,0,0.6);
+      position: relative; min-height: 340px;
+      display: flex; flex-direction: column;
+    }
+    .laptop::after {
+      content: ''; position: absolute; left: -8%; right: -8%; bottom: -14px; height: 14px;
+      background: linear-gradient(#222, #0b0d11); border-radius: 0 0 20px 20px;
+    }
+    .laptop .bar { display: flex; align-items: center; gap: 6px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+    .laptop .dot { width: 10px; height: 10px; border-radius: 50%; background: #3b3f48; }
+    .laptop .bar-title { margin-left: 10px; font-size: 12px; color: var(--muted); }
+    .laptop .screen {
+      background: #000; color: #d0d0d0; border-radius: 6px;
+      padding: 14px 16px; margin-top: 10px;
+      font-family: "SFMono-Regular", "Menlo", "Monaco", "Consolas", monospace;
+      font-size: 12px; line-height: 1.45; white-space: pre-wrap;
+      flex: 1; overflow: hidden; position: relative;
+    }
+    .laptop .screen .prompt { color: #7fb3ff; }
+    .laptop .screen .accent { color: #e3b341; }
+    .laptop .screen .ok { color: #4caf50; }
+    .laptop .screen .dim { color: #666; }
+    .cursor { display: inline-block; width: 7px; height: 14px; vertical-align: -3px; background: #d0d0d0; animation: blink 1s steps(2, start) infinite; }
+    @keyframes blink { to { visibility: hidden; } }
+
+    .phone {
+      background: var(--phone-bezel); border: 2px solid #2a2a2a;
+      border-radius: 38px; padding: 10px; width: 260px;
+      justify-self: center; align-self: center; position: relative;
+      box-shadow: 0 30px 80px -20px rgba(0,0,0,0.7);
+    }
+    .phone::before {
+      content: ''; position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      width: 80px; height: 18px; background: #000; border-radius: 12px; z-index: 2;
+    }
+    .phone .screen {
+      background: var(--phone); border-radius: 28px; overflow: hidden;
+      height: 460px; display: flex; flex-direction: column;
+    }
+    .phone .topbar {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 40px 14px 10px; background: #252526; border-bottom: 1px solid #3c3c3c;
+    }
+    .phone .topbar .title { font-size: 12px; font-weight: 600; color: #fff; }
+    .phone .topbar .status { font-size: 10px; color: var(--green); }
+    .phone .topbar button {
+      background: #3c3c3c; color: #ccc; border: 0; border-radius: 4px;
+      padding: 4px 8px; font-size: 10px;
+    }
+    .phone .term {
+      flex: 1; background: #000; color: #d0d0d0;
+      font-family: "SFMono-Regular", "Menlo", "Monaco", "Consolas", monospace;
+      font-size: 10.5px; line-height: 1.45;
+      padding: 10px 12px; white-space: pre-wrap; overflow: hidden;
+    }
+    .phone .keys {
+      display: flex; gap: 4px; padding: 6px; background: #252526;
+      border-top: 1px solid #3c3c3c; overflow-x: auto;
+    }
+    .phone .keys button {
+      flex: 0 0 auto; min-width: 30px; height: 28px;
+      background: #3c3c3c; color: #ccc; border: 0; border-radius: 5px;
+      font-size: 10px; font-weight: 600;
+    }
+    .phone .keys button.active { background: #0078d4; color: #fff; }
+    .phone .tabs {
+      display: flex; gap: 4px; padding: 4px 8px; background: #2d2d2d;
+      border-bottom: 1px solid #1a1a1a; font-size: 10px;
+    }
+    .phone .tabs .tab {
+      padding: 4px 10px; border-radius: 6px 6px 0 0;
+      color: var(--muted); background: #252526;
+    }
+    .phone .tabs .tab.active { background: #1e1e1e; color: #fff; }
+
+    .flow { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 20px; }
+    @media (max-width: 820px) { .flow { grid-template-columns: 1fr; } }
+    .flow .node {
+      background: var(--panel); border: 1px solid var(--border);
+      padding: 18px; border-radius: 10px; text-align: center;
+    }
+    .flow .node h3 { font-size: 14px; margin-bottom: 6px; }
+    .flow .node p { font-size: 12px; color: var(--muted); }
+    .flow .node .ico { font-size: 28px; margin-bottom: 6px; }
+
+    .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    @media (max-width: 820px) { .features { grid-template-columns: 1fr; } }
+    .feature {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 10px; padding: 18px;
+    }
+    .feature h3 { font-size: 14px; margin-bottom: 6px; }
+    .feature p { font-size: 13px; color: var(--muted); }
+
+    footer {
+      border-top: 1px solid var(--border); padding: 28px 24px;
+      text-align: center; color: var(--muted); font-size: 13px; margin-top: 40px;
+    }
+
+    .toggle {
+      display: inline-flex; gap: 4px;
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 999px; padding: 4px; margin-bottom: 18px;
+    }
+    .toggle button {
+      background: transparent; color: var(--muted); border: 0;
+      padding: 6px 14px; border-radius: 999px;
+      font-size: 12px; cursor: pointer;
+    }
+    .toggle button.active { background: var(--accent); color: #0b0d11; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Kiro Mobile Bridge</h1>
+    <p class="tagline">Drive the Kiro IDE <strong>and</strong> Kiro CLI from your phone over LAN.</p>
+    <div class="badges">
+      <span class="badge">Node 18+</span>
+      <span class="badge">xterm.js</span>
+      <span class="badge">node-pty</span>
+      <span class="badge">OTP auth</span>
+      <span class="badge">MIT</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="toggle" role="tablist">
+      <button id="tabCli" class="active" role="tab">CLI bridge</button>
+      <button id="tabIde" role="tab">IDE bridge</button>
+    </div>
+
+    <div class="stage">
+      <div class="laptop" aria-label="Laptop running the bridge">
+        <div class="bar">
+          <div class="dot" style="background:#ff5f57"></div>
+          <div class="dot" style="background:#febc2e"></div>
+          <div class="dot" style="background:#28c840"></div>
+          <div class="bar-title" id="laptopTitle">PowerShell — kiro-cli-mobile-bridge</div>
+        </div>
+        <div class="screen" id="laptopScreen"><span class="prompt">PS</span> <span class="dim">C:\Users\&lt;you&gt;\...\kiro-cli-mobile-bridge&gt;</span> npm start
+
+Kiro CLI Mobile Bridge
+──────────────────────
+<span class="dim">Local:  </span> http://localhost:3004
+<span class="dim">Network:</span> http://192.168.1.42:3004
+<span class="dim">Command:</span> kiro-cli.exe
+<span class="dim">Cwd:    </span> C:\Projects\my-project
+
+<span class="accent">Access Code: 938532</span>
+Enter this code on your phone to connect.
+<span class="cursor"></span></div>
+      </div>
+
+      <div class="phone" aria-label="Phone connected to the bridge">
+        <div class="screen">
+          <div class="topbar">
+            <div>
+              <div class="title" id="phoneTitle">Kiro CLI</div>
+              <div class="status">● connected</div>
+            </div>
+            <button>Restart</button>
+          </div>
+          <div class="tabs">
+            <div class="tab" id="tabIdeMini">IDE :3000</div>
+            <div class="tab active" id="tabCliMini">CLI :3004</div>
+          </div>
+          <div class="term" id="phoneTerm"><span style="color:#7fb3ff">~ / Documents / The Vault</span>
+<span style="color:#888">$</span> kiro spec<span class="cursor"></span>
+
+<span style="color:#e3b341">Resolving [1/1]</span> <span style="color:#666">Initializing...</span>
+
+<span style="color:#888">────────────────────────────────────</span>
+<span style="color:#7fb3ff">? What do you want to build:</span>
+<span style="color:#666">&gt;</span> <span style="color:#4caf50">A project-sync agent</span></div>
+          <div class="keys">
+            <button>Esc</button>
+            <button>Tab</button>
+            <button>Ctrl+C</button>
+            <button>↑</button>
+            <button>↓</button>
+            <button>←</button>
+            <button>→</button>
+            <button class="active">Enter</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="lead" style="margin-top:18px">
+      Type on the phone, watch the Kiro CLI echo every keystroke on your laptop. Same PTY,
+      both screens. Run the IDE bridge in parallel and flip between tabs on the phone — one
+      project, two surfaces.
+    </p>
+  </section>
+
+  <section>
+    <h2>How it works</h2>
+    <p>Two small Node servers, one phone, zero cloud. Everything stays on your Wi-Fi.</p>
+    <div class="flow">
+      <div class="node">
+        <div class="ico">🖥️</div>
+        <h3>Laptop</h3>
+        <p>Kiro IDE (Electron) or Kiro CLI (ConPTY) runs normally.</p>
+      </div>
+      <div class="node">
+        <div class="ico">🔁</div>
+        <h3>Bridge</h3>
+        <p>CDP for the IDE (port 3000). PTY for the CLI (port 3001+). OTP-gated, HTTP + WebSocket.</p>
+      </div>
+      <div class="node">
+        <div class="ico">📱</div>
+        <h3>Phone</h3>
+        <p>Any browser. Tabs for IDE and CLI. xterm.js renders the CLI, the bridge UI drives the IDE.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>What's in the box</h2>
+    <div class="features">
+      <div class="feature">
+        <h3>Single-use OTP</h3>
+        <p>A 6-digit code prints to the terminal on every boot. One device per server lifecycle. Cookies are HttpOnly, session-scoped.</p>
+      </div>
+      <div class="feature">
+        <h3>Scrollback replay</h3>
+        <p>Late joiners see the current screen state, not a blank terminal. 256 KiB rolling buffer for the CLI bridge.</p>
+      </div>
+      <div class="feature">
+        <h3>Multi-client</h3>
+        <p>Open on laptop + phone at once. Effective PTY size is the minimum of all viewers, so nobody sees wrapping garbage.</p>
+      </div>
+      <div class="feature">
+        <h3>Mobile-tuned UI</h3>
+        <p>Sticky Esc/Tab/Ctrl-C/arrow row. visualViewport-aware re-fit so the keyboard doesn't scroll the terminal sideways.</p>
+      </div>
+      <div class="feature">
+        <h3>Port-independent</h3>
+        <p>IDE bridge on 3000, CLI bridge on 3001 by default. Change with <code>--port</code> or <code>$PORT</code>.</p>
+      </div>
+      <div class="feature">
+        <h3>No cloud, no data leaves your LAN</h3>
+        <p>Just Node + Express + ws + node-pty. Your Kiro session never touches a third-party service.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Quickstart</h2>
+    <pre><code># Terminal 1 — IDE bridge
+kiro --remote-debugging-port=9000
+npx kiro-mobile-bridge
+
+# Terminal 2 — CLI bridge
+cd kiro-cli-mobile-bridge
+npm install
+npm start
+
+# Phone
+# open http://&lt;laptop-ip&gt;:3000 and http://&lt;laptop-ip&gt;:3001
+# enter the 6-digit OTP printed in each terminal
+</code></pre>
+  </section>
+
+  <footer>
+    <p>MIT · See README.md for the full guide · Upstream IDE bridge: <a href="https://github.com/4regab/kiro-mobile-bridge">4regab/kiro-mobile-bridge</a></p>
+  </footer>
+
+  <script>
+    const tabCli = document.getElementById('tabCli');
+    const tabIde = document.getElementById('tabIde');
+    const laptopTitle = document.getElementById('laptopTitle');
+    const laptopScreen = document.getElementById('laptopScreen');
+    const phoneTitle = document.getElementById('phoneTitle');
+    const phoneTerm = document.getElementById('phoneTerm');
+    const phoneTabs = { ide: document.getElementById('tabIdeMini'), cli: document.getElementById('tabCliMini') };
+
+    const CLI_LAPTOP = laptopScreen.innerHTML;
+    const CLI_PHONE = phoneTerm.innerHTML;
+    const IDE_LAPTOP = '<span class="prompt">PS</span> <span class="dim">C:\\Users\\&lt;you&gt;\\...\\kiro-mobile-bridge&gt;</span> npx kiro-mobile-bridge\n\n' +
+      'Kiro Mobile Bridge\n──────────────────\n' +
+      '<span class="dim">Local:  </span> http://localhost:3000\n' +
+      '<span class="dim">Network:</span> http://192.168.1.42:3000\n' +
+      '<span class="dim">Status: </span> <span class="ok">discovering Kiro on 9000-9003, 9222, 9229…</span>\n' +
+      '<span class="dim">Found:  </span> Kiro IDE · workbench window · 1 session\n\n' +
+      '<span class="accent">Access Code: 417085</span>\nEnter this code on your phone to connect.\n' +
+      '<span class="cursor"></span>';
+    const IDE_PHONE = '<span style="color:#7fb3ff">Chat · Code · Tasks</span>\n\n' +
+      '<span style="color:#4caf50">You:</span>\nAdd a keyboard-focus fix for iOS\nin the bridge UI.\n\n' +
+      '<span style="color:#e3b341">Kiro:</span>\nReading <span style="color:#7fb3ff">src/public/index.html</span>…\n' +
+      'Applying change to the resize\nhandler. Testing on iPhone SE…\n\n' +
+      '<span style="color:#888">[ type here ]</span> <span class="cursor"></span>';
+
+    function setMode(mode) {
+      if (mode === 'ide') {
+        tabCli.classList.remove('active'); tabIde.classList.add('active');
+        laptopTitle.textContent = 'PowerShell — kiro-mobile-bridge';
+        laptopScreen.innerHTML = IDE_LAPTOP;
+        phoneTitle.textContent = 'Kiro IDE';
+        phoneTerm.innerHTML = IDE_PHONE;
+        phoneTabs.ide.classList.add('active'); phoneTabs.cli.classList.remove('active');
+      } else {
+        tabIde.classList.remove('active'); tabCli.classList.add('active');
+        laptopTitle.textContent = 'PowerShell — kiro-cli-mobile-bridge';
+        laptopScreen.innerHTML = CLI_LAPTOP;
+        phoneTitle.textContent = 'Kiro CLI';
+        phoneTerm.innerHTML = CLI_PHONE;
+        phoneTabs.cli.classList.add('active'); phoneTabs.ide.classList.remove('active');
+      }
+    }
+    tabCli.addEventListener('click', () => setMode('cli'));
+    tabIde.addEventListener('click', () => setMode('ide'));
+  </script>
+</body>
+</html>

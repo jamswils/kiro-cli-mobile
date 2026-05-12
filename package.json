@@ -1,0 +1,36 @@
+{
+  "name": "kiro-cli-mobile-bridge",
+  "version": "0.1.0",
+  "description": "Mobile web bridge for Kiro CLI. Run the CLI in a PTY on your computer, interact from your phone browser over LAN.",
+  "type": "module",
+  "main": "src/server.js",
+  "bin": {
+    "kiro-cli-mobile-bridge": "src/server.js"
+  },
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "files": [
+    "src/**/*",
+    "README.md"
+  ],
+  "keywords": [
+    "kiro",
+    "kiro-cli",
+    "mobile",
+    "bridge",
+    "pty",
+    "terminal",
+    "remote"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "ws": "^8.18.0",
+    "node-pty": "^1.0.0"
+  }
+}

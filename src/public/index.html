@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <!-- viewport-fit=cover lets the black terminal reach the status-bar/home-indicator.
+       interactive-widget=resizes-content tells Chrome to shrink the layout viewport
+       when the keyboard appears instead of overlaying the page. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="theme-color" content="#1e1e1e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Kiro CLI Mobile Bridge</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* Lock the page — prevent any chance of document-level scrolling while
+       the phone keyboard is up. */
+    html, body {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      width: 100%;
+      background: #000;
+      font-family: "Segoe WPC", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, Ubuntu, sans-serif;
+      color: #cccccc;
+      overflow: hidden;
+      overscroll-behavior: none;
+      -webkit-text-size-adjust: 100%;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+    }
+
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px; background: #252526; border-bottom: 1px solid #3c3c3c;
+      flex: 0 0 auto;
+      padding-top: max(8px, env(safe-area-inset-top));
+      padding-left: max(12px, env(safe-area-inset-left));
+      padding-right: max(12px, env(safe-area-inset-right));
+    }
+    .topbar .title { font-size: 13px; font-weight: 600; color: #ffffff; }
+    .topbar .status { font-size: 11px; color: #888; }
+    .topbar .status.connected { color: #4caf50; }
+    .topbar .status.disconnected { color: #f44336; }
+    .topbar button {
+      background: #3c3c3c; color: #cccccc; border: 0; border-radius: 4px;
+      padding: 6px 10px; font-size: 12px; cursor: pointer;
+      touch-action: manipulation;
+    }
+    .topbar button:hover { background: #4a4a4a; }
+    .topbar button:active { background: #0078d4; color: #fff; }
+
+    .term-wrap {
+      flex: 1 1 auto;
+      min-height: 0;
+      position: relative;
+      overflow: hidden;
+      background: #000;
+      touch-action: pan-y;
+    }
+
+    .term-wrap .xterm {
+      position: absolute !important;
+      top: 0; left: 0; right: 0; bottom: 0;
+      padding: 4px;
+    }
+    .term-wrap .xterm-viewport {
+      background: #000 !important;
+      overflow-x: hidden !important;
+      max-width: 100% !important;
+    }
+    .term-wrap .xterm-screen {
+      max-width: 100% !important;
+    }
+    /* iOS Safari zooms on focus if font-size < 16px — force 16px on the
+       hidden helper textarea to prevent the unwanted zoom. */
+    .term-wrap .xterm-helper-textarea {
+      font-size: 16px !important;
+    }
+
+    .key-row {
+      flex: 0 0 auto;
+      display: flex; gap: 6px; padding: 6px;
+      background: #252526; border-top: 1px solid #3c3c3c;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: max(6px, env(safe-area-inset-bottom));
+    }
+    .key-row button {
+      flex: 0 0 auto;
+      min-width: 44px; height: 38px;
+      background: #3c3c3c; color: #cccccc; border: 0; border-radius: 6px;
+      font-size: 12px; font-weight: 600;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .key-row button:active { background: #0078d4; color: #fff; }
+
+    .key-row::-webkit-scrollbar { height: 4px; }
+    .key-row::-webkit-scrollbar-thumb { background: #3c3c3c; border-radius: 2px; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div>
+      <div class="title">Kiro CLI</div>
+      <div class="status" id="status">connecting…</div>
+    </div>
+    <div style="display:flex; gap:6px;">
+      <button id="btnHide" title="Hide keyboard">Hide ⌨</button>
+      <button id="btnReset" title="Restart the PTY">Restart</button>
+    </div>
+  </div>
+
+  <div class="term-wrap" id="termWrap"></div>
+
+  <div class="key-row" id="keyRow">
+    <button data-send="\u001b">Esc</button>
+    <button data-send="\t">Tab</button>
+    <button data-send="\u0003">Ctrl+C</button>
+    <button data-send="\u0004">Ctrl+D</button>
+    <button data-send="\u001b[A">↑</button>
+    <button data-send="\u001b[B">↓</button>
+    <button data-send="\u001b[D">←</button>
+    <button data-send="\u001b[C">→</button>
+    <button data-send="/">/</button>
+    <button data-send="|">|</button>
+    <button data-send="~">~</button>
+    <button data-send="\r">Enter</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+  <script>
+    const statusEl = document.getElementById('status');
+    const wrap = document.getElementById('termWrap');
+    const btnReset = document.getElementById('btnReset');
+    const btnHide = document.getElementById('btnHide');
+
+    const term = new Terminal({
+      cursorBlink: true,
+      fontSize: 13,
+      fontFamily: 'Menlo, Monaco, "Courier New", "DejaVu Sans Mono", monospace',
+      theme: {
+        background: '#000000',
+        foreground: '#e0e0e0',
+        cursor: '#ffffff',
+        cursorAccent: '#000000',
+        selectionBackground: 'rgba(120, 180, 255, 0.35)'
+      },
+      scrollback: 10000,
+      convertEol: true,
+      smoothScrollDuration: 0
+    });
+    const fit = new FitAddon.FitAddon();
+    term.loadAddon(fit);
+    term.open(wrap);
+    term.focus();
+
+    // Enable windowsMode when the server reports win32. Improves ConPTY
+    // line-ending handling.
+    fetch('/api/info').then(r => r.ok ? r.json() : null).then(info => {
+      if (info && info.platform === 'win32' && term.options) {
+        try { term.options.windowsMode = true; } catch { /* older xterm */ }
+      }
+    }).catch(() => {});
+
+    function safeFit() { try { fit.fit(); } catch { /* not ready yet */ } }
+
+    function setStatus(text, cls) {
+      statusEl.textContent = text;
+      statusEl.className = 'status ' + (cls || '');
+    }
+
+    let ws = null;
+    let reconnectTimer = null;
+    let reconnectDelay = 500;
+
+    function connect() {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+
+      const { cols, rows } = term;
+      const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+      const url = `${proto}://${location.host}/ws/pty?cols=${cols}&rows=${rows}`;
+      ws = new WebSocket(url);
+      ws.binaryType = 'arraybuffer';
+
+      ws.addEventListener('open', () => {
+        setStatus('connected', 'connected');
+        reconnectDelay = 500;
+        sendResize();
+      });
+
+      ws.addEventListener('message', (ev) => {
+        if (typeof ev.data === 'string') {
+          try {
+            const msg = JSON.parse(ev.data);
+            if (msg.type === 'error') {
+              term.write(`\r\n\x1b[31m[bridge error] ${msg.message}\x1b[0m\r\n`);
+            } else if (msg.type === 'exit') {
+              term.write(msg.notice || `\r\n\x1b[33m[exited]\x1b[0m\r\n`);
+            }
+          } catch { /* non-JSON text frame; ignore */ }
+          return;
+        }
+        term.write(new Uint8Array(ev.data));
+      });
+
+      ws.addEventListener('close', () => {
+        setStatus('disconnected — reconnecting', 'disconnected');
+        scheduleReconnect();
+      });
+      ws.addEventListener('error', () => {
+        setStatus('error — reconnecting', 'disconnected');
+        try { ws.close(); } catch { /* noop */ }
+      });
+    }
+
+    function scheduleReconnect() {
+      if (reconnectTimer) return;
+      reconnectTimer = setTimeout(() => {
+        reconnectDelay = Math.min(reconnectDelay * 2, 5000);
+        connect();
+      }, reconnectDelay);
+    }
+
+    function sendResize() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+    }
+
+    term.onData((data) => {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(new TextEncoder().encode(data));
+    });
+
+    // Debounced fit via requestAnimationFrame to avoid thrashing during
+    // the keyboard slide-in animation.
+    let fitPending = false;
+    function requestFit() {
+      if (fitPending) return;
+      fitPending = true;
+      requestAnimationFrame(() => {
+        fitPending = false;
+        safeFit();
+        sendResize();
+      });
+    }
+
+    requestAnimationFrame(() => requestFit());
+
+    window.addEventListener('resize', requestFit);
+    window.addEventListener('orientationchange', requestFit);
+
+    // The fix for "screen scrolls sideways when I type on my phone":
+    // the mobile keyboard show/hide fires visualViewport.resize events; the
+    // regular window.resize event may not fire at all on iOS. Re-fit on
+    // every visualViewport change so the terminal always matches the
+    // visible area and the cursor never has to scroll horizontally to stay
+    // on screen.
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', requestFit);
+      window.visualViewport.addEventListener('scroll', requestFit);
+    }
+
+    document.querySelectorAll('.key-row button[data-send]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const raw = btn.getAttribute('data-send');
+        const decoded = JSON.parse('"' + raw.replace(/"/g, '\\"') + '"');
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(new TextEncoder().encode(decoded));
+        }
+        term.focus();
+      });
+    });
+
+    btnReset.addEventListener('click', async () => {
+      if (!confirm('Restart the Kiro CLI? Current session will be killed.')) return;
+      try {
+        await fetch('/api/reset', { method: 'POST' });
+        term.write('\r\n\x1b[33m[restarting…]\x1b[0m\r\n');
+      } catch { /* ignore */ }
+    });
+
+    btnHide.addEventListener('click', () => {
+      const active = document.activeElement;
+      if (active && typeof active.blur === 'function') active.blur();
+    });
+
+    wrap.addEventListener('touchstart', () => term.focus(), { passive: true });
+    wrap.addEventListener('click', () => term.focus());
+    document.getElementById('keyRow').addEventListener('contextmenu', (e) => e.preventDefault());
+
+    connect();
+  </script>
+</body>
+</html>

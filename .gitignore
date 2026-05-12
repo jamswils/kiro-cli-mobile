@@ -1,0 +1,27 @@
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env
+.env.local
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
+logs/
+
+# Local-only (contains registry pins that shouldn't ship)
+.npmrc
+
+# Pre-share scanners (dev-only, never publish)
+.scan.mjs
+.deepscan.mjs
+
+# OS
+*.orig
